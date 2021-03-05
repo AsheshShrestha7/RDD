@@ -1,0 +1,126 @@
+% RDD Replication
+% Ashesh Shrestha
+% 28 Feb 2021
+
+*Question 1
+
+https://github.com/AsheshShrestha7/RDD
+
+*Question 2
+
+The main objective of this paper is to test the effect of sanctions and punishment for driving under influence (DUI). It seeks to investigate whether harsher punishment for driving under influence reduces recidivism or not. This paper uses the administrative record of 512,964 stops from the state of Washington where blood alcohol content (BAC) measured above 0.08 is DUI and BAC measured above 0.15 is aggravated DUI. A DUI entails fines, jail time and license suspensions, all of which are higher for aggravated DUI. Moreover, the statutory future penalty increases for each DUI received regardless of whether the previous offense was an ordinary DUI or aggravated DUI. Thus, the use of BAC threshold to determine punishment severity has allowed Hansen to use regression discontinuity design (RDD) to test whether the harsher punishments and sanctions offender experience at the BAC thresholds are effective in reducing drunk driving or not. 
+
+The key assumption of RDD is the assumption of smoothness. The underlying conditional regression should be continuous across the threshold. In other words, the drivers should not be able to manipulate which side of the threshold their BAC would fall which means, there should not be sorting on running variable. To test if there are signs of manipulation, Hansen has conducted density test and also checked for co-variate balance. With the p-values of 0.59 and 0.38 respectively at the 0.08 and 0.15 thresholds, there was no evidence of manipulation. Furthermore, while conducting a local linear polynomial regression with various covariates including key driver demographics like age, gender and race, as dependent variables, Hansen failed to reject the null that these characteristics are unrelated to the BAC cutoffs for DUI and aggravated DUI. Thus, he concluded that co-variates are balanced at cut-off and claimed this as a further evidence against sorting. 
+
+Based on regression discontinuity design he concludes that having a BAC level above the threshold of 0.08 decreases recidivism by 2 percentage point in four year follow-up period. Similarly, having a BAC above the aggravated DUI threshold reduces recidivism by 1.1 percentage point which translates to 8.9 percentage point, given the baseline recidivism rate. 
+
+
+*Question 3
+
+```s
+	use hansen_dwi, clear
+	generate DUI = 1 if (bac1>= 0.08)
+	replace DUI= 0 if (bac1<0.08)
+```
+*Question 4
+One of the tests we can conduct in order to check if people have manipulated their blood alcohol contest is McCrary density test. The following outlines the steps for implementing the test:
+
+1.	First create a histogram of the density of the running variable which is blood alcohol content (bac1) using a particular bin size such that no bins overlaps the cut point (BAC of 0.08).
+2.	Then, run two local linear regressions, one to the right and one the left of the cut-point.
+3.	Lastly, test whether log difference in height of the regression line just to the right and to the left of the cut-off is statistically different from zero.
+
+```s
+	hist bac1, freq width(0.001) xline(0.08)
+	graph export histogram.png
+	rddensity bac1, c(0.08) hist_width(0.001) plot
+	graph export densityplot.png
+```
+![Histogram of bac1](histogram.png)
+![](densityplot.png)
+
+The distribution of bac1 offers little evidence of manipulation of blood alcohol content. The p-value of 0.88 signifies that log difference in height of the regression line just to the right and to the left of the threshold of 0.08 is not statistically difference from zero. 
+
+Hansen’s result from the density test produces similar result to what I have found. He also finds no evidence of sorting on the running variable with p-value of the test 0.59 at the cut-off of 0.08.
+
+
+*Question 5
+
+```s
+	gen bac1_DUI = bac1*DUI
+	eststo: quietly rdrobust white bac1, c(0.08) h(0.05) kernel(uniform) 
+	eststo: quietly rdrobust male bac1, c(0.08) h(0.05) kernel(uniform) 
+	eststo: quietly rdrobust aged bac1, c(0.08) h(0.05) kernel(uniform) 
+	eststo: quietly rdrobust acc bac1, c(0.08) h(0.05) kernel(uniform) 
+	esttab, se
+	eststo clear
+```
+
+Since the RD estimates are insignificant, I fail to reject the null hypothesis that white, male, age and accident are unrelated to blood alcohol content (bac1) at cut-off of 0.08. Thus, I conclude that the covariates are balanced at the cut-off. 
+
+* Question 6
+
+```s
+	quietly cmogram white bac1, cut(0.08) scatter line(0.08) lfitci
+	graph export cmogram1.png
+	quietly cmogram white bac1, cut(0.08) scatter line(0.08) qfitci
+	graph export cmogram2.png
+	quietly cmogram male bac1, cut(0.08) scatter line(0.08) lfitci
+	graph export cmogram3.png
+	quietly cmogram male bac1, cut(0.08) scatter line(0.08) qfitci
+	graph export cmogram4.png
+	quietly cmogram aged bac1, cut(0.08) scatter line(0.08) lfitci
+	graph export cmogram5.png
+	quietly cmogram aged bac1, cut(0.08) scatter line(0.08) qfitci
+	graph export cmogram6.png
+	quietly cmogram acc bac1, cut(0.08) scatter line(0.08) lfitci
+	graph export cmogram7.png
+	quietly cmogram acc bac1, cut(0.08) scatter line(0.08) qfitci
+	graph export cmogram8.png
+```
+
+![](cmogram1.png)
+![](cmogram2.png)
+![](cmogram3.png)
+![](cmogram4.png)
+![](cmogram5.png)
+![](cmogram6.png)
+![](cmogram7.png)
+![](cmogram8.png)
+
+In the figures, we can see that white, male, age and accident are stable across the DUI punishment threshold of 0.08. There is no sudden significant jump in the regression line in either side of the cutoff. The confidence interval of the regression lines overlap right at the cutoff in at least one of the linear and quadratic models. In Hansen’s paper, the linear regression lines of BAC on conditional mean of white, male, age and accident remain unchanged across the threshold signifying that there is no manipulation in either side of the 0.08 threshold. Thus, my results are similar to what Hansen has found in his paper.
+
+*Question 7
+
+```s
+	gen bac1_squared = bac1^2
+	gen bac1_squared_DUI = bac1_squared*DUI
+	eststo: quietly rdrobust recid bac1, c(0.08) h(0.05) covs(bac1) all
+	eststo: quietly rdrobust recid bac1, c(0.08) h(0.05) covs(bac1_DUI) all
+	eststo: quietly rdrobust recid bac1, c(0.08) h(0.05) covs(bac1_DUI bac1_squared_DUI) all
+	esttab, se
+	eststo clear
+	eststo: quietly rdrobust recid bac1, c(0.08) h(0.025) covs(bac1) all
+	eststo: quietly rdrobust recid bac1, c(0.08) h(0.025) covs(bac1_DUI) all
+	eststo: quietly rdrobust recid bac1, c(0.08) h(0.025) covs(bac1_DUI bac1_squared_DUI) all
+	esttab, se
+	eststo clear
+```
+
+*Question 8
+
+```s
+	quietly cmogram recid bac1 if bac1<0.15, cut(0.08) scatter line(0.08) lfit 
+	graph export cmogram9.png
+	quietly cmogram recid bac1 if bac1<0.15, cut(0.08) scatter line(0.08) qfit 
+	graph export cmogram10.png
+```
+![](cmogram9.png)
+![](cmogram10.png)
+
+*Question 9
+
+This exercise in general has helped me to understand the concepts surrounding the Regression Discontinuity design. I have better understood the assumption of smoothness and the importance of this assumption in order to establish causal relationship using discontinuity design. Now, I understand and I am able to test if there is any evidence of manipulation at the cut-off.  However, I still have some confusion regarding operation of RDD which I hope will get clearer with further readings and practice exercises. 
+
+The main hypothesis tested was whether harsher punishments and sanctions on driving under the influence, that is having BAC level higher than 0.08, reduces recidivism or not. As seen in the table for question number 7, in all three columns of both the panels(with bandwidth of 0.05 and 0.025), the coefficient of local polynomial discontinuity estimates are negative and statistically significant. Hence, I can conclude that having BAC level above 0.08 reduces recidivism.
+
+I think Hansen has thoroughly followed the procedure of regression discontinuity design to come to the conclusion. Moreover, from the replication exercise, I also have come to similar conclusion. Hence, I am confident in Hansen's conclusion.
